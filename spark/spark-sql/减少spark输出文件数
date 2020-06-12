@@ -1,0 +1,15 @@
+long count = customerLinkManDataset.count();
+        if (count != 0L) {
+            sparkSession.conf().set("hive.exec.dynamic.partition", "true"); // 动态分区
+            sparkSession.conf().set("hive.exec.dynamic.partition.mode", "nonstrict"); // 非严格模式
+            // 计算 分区数
+            int partitionNum = new Long((count % (5000 * 10) == 0 ? count / (5000 * 10) : count / (5000 * 10) + 1)).intValue();
+            customerLinkManDataset.withColumn("d_date", functions.lit(batchDate))
+                    .withColumn("rn", functions.row_number().over(Window.partitionBy("linkman_idcard", "p_type","linkman_name", "ecif").orderBy(functions.desc("create_time"))))
+                    .where("rn=1")
+                    .select("linkman_name", "linkman_phone", "ecif", "cust_name",
+                            "relation_ship", "linkman_addr", "linkman_idcard", "org", "create_time", "update_time", "d_date","p_type"
+                    ).
+                    coalesce(partitionNum).write().mode(SaveMode.Overwrite).insertInto("dwb.dwb_customer_linkman_info");
+}
+会多一个count的job,可以根据消息平均大小估算和消息条数 估算一个值
