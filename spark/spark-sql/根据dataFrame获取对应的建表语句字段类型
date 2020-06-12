@@ -1,0 +1,22 @@
+/**
+   * 根据df 获取对应df 获取表的字段的类型信息
+   * @param dataFrame
+   * @return
+   */
+  def getTableFields(dataFrame: DataFrame):List[(String,String)] ={
+  val schema: StructType = dataFrame.schema
+  var lists = List[(String, String)]()
+  for (elem <- schema) {
+    val dataType = elem.dataType
+    val field_Type = dataType match {
+      case TimestampType => "String"
+      case IntegerType =>"INT"
+      case it:DecimalType=>s"DECIMAL(${it.precision},${it.scale})"
+      case DoubleType=>"DECIMAL(15,6)"
+      case FloatType =>"DECIMAL(15,2)"
+      case _ =>"STRING"
+    }
+    lists =(elem.name, field_Type)::lists
+  }
+  lists.reverse
+}
