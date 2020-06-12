@@ -1,0 +1,6 @@
+1 动态分区
+spark.sql("set hive.exec.dynamic.partition=true")
+spark.sql("set hive.exec.dynamic.partition.mode=nonstrict")
+spark.sql("set hive.exec.max.dynamic.partitions=100000")
+spark.sql("set hive.exec.max.dynamic.partitions.pernode=100000")
+ spark.sql("set hive.exec.max.created.files=100000")
