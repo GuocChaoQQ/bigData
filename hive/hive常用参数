@@ -1,0 +1,10 @@
+1 修改hive计算引擎
+set hive.execution.engine=mr; 
+set hive.execution.engine=spark;
+2 内部表外部表之前的转换
+alter table tablePartition set TBLPROPERTIES ('EXTERNAL'='TRUE');  //内部表转外部表
+alter table tablePartition set TBLPROPERTIES ('EXTERNAL'='FALSE');
+3 修复指定分区的数据
+msck repair table employees;
+4 删除指定表的分区
+alter table test_partition drop partition(year=2018);
