@@ -1,0 +1,145 @@
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.*;
+import org.apache.hadoop.io.IOUtils;
+
+import java.io.IOException;
+
+/**
+ * created by chao.guo on 2020/5/11
+ **/
+public class MergeSmallFile {
+    public static final String FILENAME_PRE="merge-file-merge-part-0000"; // 文件合并后的文件名前缀
+    public static  final Long BLOCK_ZIE = 256*1024*1024L; // 合并生成的文件块大小
+
+    public static void main(String[] args) throws IOException {
+        if (args.length<=4) {
+            System.err.println("请输入(文件所属用户,hdfs master地址,路径地址，是否有子目录,删除或者合并（合并1，删除2）)五个参数");
+            return;
+        }
+        String user =args[0];
+        String hdfsMaster =args[1];
+        String distPath =args[2];
+
+        String isHaveChildDr_str =args[3];
+        String isDelete_Str =args[4];
+        if(!hdfsMaster.startsWith("hdfs")){
+            System.err.println("请输入对应的hdfs master 地址：如 hdfs://10.83.0.47:8020");
+            return;
+        }
+        System.setProperty("HADOOP_USER_NAME", user);
+        Configuration conf =new Configuration();
+        conf.set("fs.defaultFS", hdfsMaster); //hdfs://10.83.0.47:8020
+        conf.setBoolean("dfs.support.append", true);
+        FileSystem fs = FileSystem.get(conf);
+//        String distPath = "/user/hive/warehouse/student1" ;// 要合并目录
+        if(Integer.parseInt(isDelete_Str)==1){
+            boolean isHaveChildDr =Boolean.parseBoolean(isHaveChildDr_str); // 是否有子目录
+            if(isHaveChildDr){
+                FileStatus[] fileStatuses = fs.listStatus(new Path(distPath));
+                for (FileStatus fileStatus : fileStatuses) {
+                    Path path = fileStatus.getPath();
+                    if (fileStatus.isDirectory()) {
+                        mergeSmallFileByDirectory(fs, path, conf);
+                    }
+                }
+            }else{
+                mergeSmallFileByDirectory(fs,new Path(distPath),conf);
+            }
+        }else if(Integer.parseInt(isDelete_Str)==2){
+                //未抛出异常执行完合并后 过滤出后缀是带_delete的删除对应的文件
+                RemoteIterator<LocatedFileStatus> locatedFileStatusRemoteIterator = fs.listFiles(new Path(distPath), true);
+                System.err.println("delete 作废的文件！");
+                while (locatedFileStatusRemoteIterator.hasNext()) {
+                    LocatedFileStatus next = locatedFileStatusRemoteIterator.next();
+                    Path path = next.getPath();
+                    if(path.toString().endsWith("_delete")){
+                        System.err.println("删除标记为delete的小文件"+path.toString());
+                        fs.delete(path,false);
+                    }
+            }
+        }
+
+        fs.close();
+    }
+
+
+
+
+
+
+
+
+
+
+    /**
+     * 过滤掉影藏文件 和 success文件
+     * @param path
+     * @return
+     */
+    private static Boolean isFilterPath(Path path){
+        String name = path.getName();
+       return  !name.startsWith("_") && !name.startsWith(".") && !name.endsWith("_delete")&& !name.contains(".in-progress")
+               && !name.contains("Pending");
+    }
+
+    /**
+     * 根据目录合并 该目录下的小文件 并标记删除
+     */
+    private static void  mergeSmallFileByDirectory(FileSystem fs,Path dirPath,Configuration conf) {
+        System.err.println("------------------------------------------------"+dirPath+"开始合并----------------------------------------------------------------------------------------");
+        Path distPath = dirPath; // 要合并目录
+        RemoteIterator<LocatedFileStatus> files = null;
+        int index = 0 ;//文件下标
+        Long totalSize = 0L;
+        Long current_file_zie = 0L; //当前文件大小
+        try {
+            files = fs.listFiles(distPath, false);
+            while (files.hasNext()) {
+                LocatedFileStatus file = files.next();
+                Long len = file.getLen();
+                if(len >=BLOCK_ZIE ||  Math.abs(len-BLOCK_ZIE)<=30*1024*1024L) {  // 目标文件在200M左右 不进行合并
+                    continue;
+                }
+                Path path = file.getPath();
+                String[] split = path.toString().split("\\/");
+                String str = split[split.length - 1].replaceAll("(\\S+)(\\.\\S+)", "$2") ;// 后缀
+                if(!str.contains(".")){
+                    str="";
+                }
+                if (isFilterPath(path) && !file.isDirectory()) {
+                    current_file_zie = current_file_zie + len;
+                    if (current_file_zie >= BLOCK_ZIE) { // 大于64M 生产新的文件
+                        index = index + 1;
+                        current_file_zie = len;
+                    }
+                    String fileName =FILENAME_PRE + index;
+                    Path filePath = new Path(distPath + "/" + fileName + str);
+                    FSDataInputStream fsDataInputStream = fs.open(path,16*1024*1024);
+                    FSDataOutputStream dataOutputStream = null;
+                    if (fs.exists(filePath)) { // 文件目录是否存在
+                        dataOutputStream = fs.append(filePath);
+                    } else {
+                        dataOutputStream = fs.create(filePath, true);
+                    }
+                    IOUtils.copyBytes(fsDataInputStream, dataOutputStream, conf, true) ;// 拷贝流
+                    totalSize =totalSize+len;
+                    fs.rename(path,new Path(path.toString()+"_delete")); // 将拷贝完的文件标记为delete
+                    System.err.println("文件合并--------------------success!" +
+                            "目标文件：" + filePath+"\n"+
+                            "当前文件大小："+current_file_zie/1024 +"kb \n"+
+                            "小文件:"+path +"\n"+
+                            "小文件大小："+len/1024 +"kb");
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.err.println("------------------------------------------------"+dirPath+"合并完成----------------------------------------------------------------------------------------");
+        System.err.println("合并后文件个数："+(index+1));
+        System.err.println("合并后的文件大小："+totalSize/1024/1024 +"M");
+    }
+
+
+
+
+}
