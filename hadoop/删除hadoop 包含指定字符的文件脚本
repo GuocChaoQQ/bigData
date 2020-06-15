@@ -1,0 +1,36 @@
+#!/bin/bash
+hdfs_path=$1
+echo $hdfs_path
+
+file_name=`basename $hdfs_path`
+find_prefix=$2
+if [ ! -n "$find_prefix" ]
+then 
+echo '请输入要查找的文件的通配字符'
+exit
+fi;
+
+echo $file_name
+
+`hadoop fs -ls -R $hdfs_path | grep ${find_prefix} >> $file_name.txt`
+
+`sed -e 's/[[:space:]][[:space:]]*/,/g' $file_name.txt >>$file_name"_bak.txt"`
+`rm $file_name.txt`
+
+`cat $file_name"_bak.txt" | cut -d ',' -f 8 >> $file_name"_data_path"`
+
+`rm $file_name"_bak.txt"`
+
+for line in `cat $file_name"_data_path"`
+do
+echo $line	
+	## `hadoop fs -rm $line` 
+done
+
+
+
+
+
+
+
+
