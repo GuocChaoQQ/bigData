@@ -8,3 +8,18 @@ alter table tablePartition set TBLPROPERTIES ('EXTERNAL'='FALSE');
 msck repair table employees;
 4 删除指定表的分区
 alter table test_partition drop partition(year=2018);
+5 增加分区(单个分区)
+ alter table dept_partition add partition(month='201706') ;
+6 增加多个分区
+alter table dept_partition add partition(month='201705') partition(month='201704');//使用逗号分隔
+7 删除多个分区
+alter table dept_partition drop partition (month='201705'), partition (month='201706');
+8 查看该表的分区
+show partitions dept_partition;
+9 查看表是否被锁
+show locks extended;
+10 解除表锁
+unlock table <tablename>
+11 解决分区被锁
+set hive.support.concurrency=false;
+ 
