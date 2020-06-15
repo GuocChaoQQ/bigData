@@ -1,1 +1,8 @@
-
+1 删除指定一行的数据
+deleteall 'tablename', rowkey
+2 删除hive关联hbase表中的数据
+hive -e "select concat('deleteall \'test_turboway\',\'',keyid,'\'') from edw.test_turboway_hbase where loginid = '20181122'" > del_temp.txt && echo 'exit' >> del_temp.txt
+hbase shell del_temp.txt > del.log
+https://www.cnblogs.com/TurboWay/p/10193998.html
+3 查询hbase 指定列族的数据保存到文件中
+ echo "scan 'h_new_account_data_ref',{COLUMNS=>['ecas_repay_schedule','ecas_loan']}" | hbase shell >>log.txt
