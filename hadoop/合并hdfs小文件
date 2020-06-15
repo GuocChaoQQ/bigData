@@ -4,6 +4,10 @@ import org.apache.hadoop.io.IOUtils;
 
 import java.io.IOException;
 
+/* 任务提交命令
+hadoop jar data-utilities-1.0-SNAPSHOT.jar MergeSmallFile admin  hdfs://10.83.xxx.5:8020   /user/admin/drip_loan/table/approve true 2 >>approve.log 2>&1
+*/
+
 /**
  * created by chao.guo on 2020/5/11
  **/
