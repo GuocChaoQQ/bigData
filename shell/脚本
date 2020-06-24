@@ -1,0 +1,7 @@
+#！/bin/bash
+date=$1
+if [ ! $date ]
+then
+        date=`date -d "1 day ago" +%Y-%m-%d`
+fi;
+echo "当前批次时间:$date"
