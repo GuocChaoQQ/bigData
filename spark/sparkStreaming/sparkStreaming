@@ -1,0 +1,6 @@
+ new SparkConf().setAppName("appName").setMaster("local[*]")
+      .set("spark.streaming.backpressure.enabled", "true")  // 开启被压
+      .set("spark.streaming.kafka.maxRatePerPartition", "5") // 每秒 每个分区消费10条数据
+      .set("spark.streaming.stopGracefullyOnShutdown", "true"); // 优雅关闭
+    System.setProperty("HADOOP_USER_NAME", "hdfs")
+    val ssc: StreamingContext = new StreamingContext(conf, Seconds(3)) // 3 秒一个批次
